@@ -34,9 +34,9 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    sudo::escalate_if_needed().expect("sudo failed");
-
     let cli = Cli::parse();
+
+    sudo::escalate_if_needed().expect("sudo failed");
 
     let mut filters = match cli.filters {
         Some(filters) => filters,
