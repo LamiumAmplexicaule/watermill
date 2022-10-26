@@ -4,6 +4,7 @@ use pnet::datalink::NetworkInterface;
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::packet::icmp::{IcmpType, IcmpTypes};
 use pnet::packet::icmpv6::{Icmpv6Type, Icmpv6Types};
+use std::net::IpAddr;
 
 pub fn get_default_interface_name(interfaces: &[NetworkInterface]) -> String {
     interfaces
@@ -43,6 +44,13 @@ pub fn get_sender_and_target_vendor(
             None => "Unknown".to_string(),
         },
     )
+}
+
+pub fn host_match(source: &IpAddr, destination: &IpAddr, hosts: &[IpAddr]) -> bool {
+    hosts.is_empty()
+        || hosts
+            .iter()
+            .any(|host| host.eq(source) || host.eq(destination))
 }
 
 pub fn get_local_time() -> String {

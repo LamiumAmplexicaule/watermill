@@ -9,6 +9,7 @@ use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::NetworkInterface;
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::util::MacAddr;
+use std::net::IpAddr;
 use std::path::Path;
 
 mod filter;
@@ -27,6 +28,10 @@ struct Cli {
     #[arg(short = 'f', long = "filter", value_enum, num_args(0..))]
     filters: Option<Vec<Filter>>,
 
+    /// Name of the ip to show
+    #[arg(long = "host", num_args(0..))]
+    hosts: Option<Vec<IpAddr>>,
+
     /// Update oui
     #[arg(long = "update")]
     update: bool,
@@ -44,6 +49,12 @@ async fn main() {
     };
     filters.sort();
     filters.dedup();
+    let mut hosts = match cli.hosts {
+        Some(hosts) => hosts,
+        None => Vec::new(),
+    };
+    hosts.sort();
+    hosts.dedup();
 
     let interfaces = datalink::interfaces();
 
@@ -78,6 +89,7 @@ async fn main() {
                     &interface,
                     &EthernetPacket::new(packet).unwrap(),
                     &filters,
+                    &hosts,
                     &vendors,
                 );
             }

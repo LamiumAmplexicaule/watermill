@@ -1,6 +1,7 @@
 use crate::filter::Filter;
 use crate::utils::{
     get_icmp_type_name, get_icmpv6_type_name, get_local_time, get_sender_and_target_vendor,
+    host_match,
 };
 use crate::{Vendor, IP_FILTERS, TRANSPORT_FILTERS};
 use pnet::datalink::NetworkInterface;
@@ -20,6 +21,7 @@ pub fn handle_ethernet_frame(
     interface: &NetworkInterface,
     ethernet: &EthernetPacket,
     filters: &[Filter],
+    hosts: &[IpAddr],
     vendors: &[Vendor],
 ) {
     let interface_name = interface.name.as_str();
@@ -33,22 +35,22 @@ pub fn handle_ethernet_frame(
             if !filters.is_empty() && !filters.contains(&Filter::Ipv4) && !have_transport_filter {
                 return;
             }
-            handle_ipv4_packet(interface_name, ethernet, filters, vendors);
+            handle_ipv4_packet(interface_name, ethernet, filters, hosts, vendors);
         }
         EtherTypes::Arp => {
             if !filters.is_empty() && !filters.contains(&Filter::Arp) {
                 return;
             }
-            handle_arp_packet(interface_name, ethernet, vendors)
+            handle_arp_packet(interface_name, ethernet, hosts, vendors)
         }
         EtherTypes::Ipv6 => {
             if !filters.is_empty() && !filters.contains(&Filter::Ipv6) && !have_transport_filter {
                 return;
             }
-            handle_ipv6_packet(interface_name, ethernet, filters, vendors)
+            handle_ipv6_packet(interface_name, ethernet, filters, hosts, vendors)
         }
         _ => {
-            if filters.is_empty() {
+            if filters.is_empty() && hosts.is_empty() {
                 let (sender_vendor, target_vendor) =
                     get_sender_and_target_vendor(ethernet, vendors);
                 println!(
@@ -71,6 +73,7 @@ pub fn handle_ipv4_packet(
     interface_name: &str,
     ethernet: &EthernetPacket,
     filters: &[Filter],
+    hosts: &[IpAddr],
     vendors: &[Vendor],
 ) {
     let ipv4 = Ipv4Packet::new(ethernet.payload());
@@ -83,6 +86,7 @@ pub fn handle_ipv4_packet(
             ipv4.payload(),
             ethernet,
             filters,
+            hosts,
             vendors,
         );
     }
@@ -92,6 +96,7 @@ pub fn handle_ipv6_packet(
     interface_name: &str,
     ethernet: &EthernetPacket,
     filters: &[Filter],
+    hosts: &[IpAddr],
     vendors: &[Vendor],
 ) {
     let ipv6 = Ipv6Packet::new(ethernet.payload());
@@ -104,50 +109,63 @@ pub fn handle_ipv6_packet(
             ipv6.payload(),
             ethernet,
             filters,
+            hosts,
             vendors,
         );
     }
 }
 
-pub fn handle_arp_packet(interface_name: &str, ethernet: &EthernetPacket, vendors: &[Vendor]) {
+pub fn handle_arp_packet(
+    interface_name: &str,
+    ethernet: &EthernetPacket,
+    hosts: &[IpAddr],
+    vendors: &[Vendor],
+) {
     let arp = ArpPacket::new(ethernet.payload());
     let local_datetime = get_local_time();
     let (sender_vendor, target_vendor) = get_sender_and_target_vendor(ethernet, vendors);
     if let Some(arp) = arp {
-        match arp.get_operation() {
-            ArpOperations::Request => println!(
-                "[{}] {} ARP, Request {}({}/{}) > {}({}/{})",
-                interface_name,
-                local_datetime,
-                ethernet.get_source(),
-                arp.get_sender_proto_addr(),
-                sender_vendor,
-                ethernet.get_destination(),
-                arp.get_target_proto_addr(),
-                target_vendor
-            ),
-            ArpOperations::Reply => println!(
-                "[{}] {} ARP, Reply {}({}/{}) > {}({}/{})",
-                interface_name,
-                local_datetime,
-                ethernet.get_source(),
-                arp.get_sender_proto_addr(),
-                sender_vendor,
-                ethernet.get_destination(),
-                arp.get_target_proto_addr(),
-                target_vendor
-            ),
-            _ => println!(
-                "[{}] {} ARP, Unknown {}({}/{}) > {}({}/{})",
-                interface_name,
-                local_datetime,
-                ethernet.get_source(),
-                arp.get_sender_proto_addr(),
-                sender_vendor,
-                ethernet.get_destination(),
-                arp.get_target_proto_addr(),
-                target_vendor
-            ),
+        let host_match = host_match(
+            &IpAddr::from(arp.get_sender_proto_addr()),
+            &IpAddr::from(arp.get_target_proto_addr()),
+            hosts,
+        );
+        if host_match {
+            match arp.get_operation() {
+                ArpOperations::Request => println!(
+                    "[{}] {} ARP, Request {}({}/{}) > {}({}/{})",
+                    interface_name,
+                    local_datetime,
+                    ethernet.get_source(),
+                    arp.get_sender_proto_addr(),
+                    sender_vendor,
+                    ethernet.get_destination(),
+                    arp.get_target_proto_addr(),
+                    target_vendor
+                ),
+                ArpOperations::Reply => println!(
+                    "[{}] {} ARP, Reply {}({}/{}) > {}({}/{})",
+                    interface_name,
+                    local_datetime,
+                    ethernet.get_source(),
+                    arp.get_sender_proto_addr(),
+                    sender_vendor,
+                    ethernet.get_destination(),
+                    arp.get_target_proto_addr(),
+                    target_vendor
+                ),
+                _ => println!(
+                    "[{}] {} ARP, Unknown {}({}/{}) > {}({}/{})",
+                    interface_name,
+                    local_datetime,
+                    ethernet.get_source(),
+                    arp.get_sender_proto_addr(),
+                    sender_vendor,
+                    ethernet.get_destination(),
+                    arp.get_target_proto_addr(),
+                    target_vendor
+                ),
+            }
         }
     }
 }
@@ -161,13 +179,17 @@ pub fn handle_transport_protocol(
     packet: &[u8],
     ethernet: &EthernetPacket,
     filters: &[Filter],
+    hosts: &[IpAddr],
     vendors: &[Vendor],
 ) {
     let local_datetime = get_local_time();
     let have_ip_filters = filters.iter().any(|filter| IP_FILTERS.contains(filter));
+    let host_match = host_match(&source, &destination, hosts);
     match protocol {
         IpNextHeaderProtocols::Icmp => {
-            if !filters.is_empty() && !filters.contains(&Filter::Icmp) && !have_ip_filters {
+            if (!filters.is_empty() && !filters.contains(&Filter::Icmp) && !have_ip_filters)
+                || !host_match
+            {
                 return;
             }
             handle_icmp_packet(
@@ -180,7 +202,9 @@ pub fn handle_transport_protocol(
             )
         }
         IpNextHeaderProtocols::Tcp => {
-            if !filters.is_empty() && !filters.contains(&Filter::Tcp) && !have_ip_filters {
+            if (!filters.is_empty() && !filters.contains(&Filter::Tcp) && !have_ip_filters)
+                || !host_match
+            {
                 return;
             }
             handle_tcp_packet(
@@ -193,7 +217,9 @@ pub fn handle_transport_protocol(
             )
         }
         IpNextHeaderProtocols::Udp => {
-            if !filters.is_empty() && !filters.contains(&Filter::Udp) && !have_ip_filters {
+            if (!filters.is_empty() && !filters.contains(&Filter::Udp) && !have_ip_filters)
+                || !host_match
+            {
                 return;
             }
             handle_udp_packet(
@@ -206,7 +232,9 @@ pub fn handle_transport_protocol(
             )
         }
         IpNextHeaderProtocols::Icmpv6 => {
-            if !filters.is_empty() && !filters.contains(&Filter::Icmpv6) && !have_ip_filters {
+            if (!filters.is_empty() && !filters.contains(&Filter::Icmpv6) && !have_ip_filters)
+                || !host_match
+            {
                 return;
             }
             handle_icmpv6_packet(
@@ -219,7 +247,7 @@ pub fn handle_transport_protocol(
             )
         }
         _ => {
-            if filters.is_empty() {
+            if filters.is_empty() && host_match {
                 println!(
                     "[{}] {} {} {} > {}: protocol {} length {}",
                     interface_name,

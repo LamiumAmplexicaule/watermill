@@ -7,4 +7,5 @@ Packet capture tool like tcpdump
 ## Feature
 
 - Show vendor name based on [IEEE OUI](https://standards-oui.ieee.org/oui/oui.csv).
-- Filter packet.
+- Filter packets based on packet name.
+- Filter packets based on ip.
