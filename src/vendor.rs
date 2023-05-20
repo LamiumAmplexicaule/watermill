@@ -1,9 +1,10 @@
-use async_recursion::async_recursion;
-use csv::Reader;
-use serde::Deserialize;
 use std::fs::File;
 use std::path::Path;
 use std::{fs, io};
+
+use async_recursion::async_recursion;
+use csv::Reader;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Vendor {

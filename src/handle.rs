@@ -1,9 +1,5 @@
-use crate::filter::Filter;
-use crate::utils::{
-    get_icmp_type_name, get_icmpv6_type_name, get_local_time, get_sender_and_target_vendor,
-    host_match,
-};
-use crate::{Vendor, IP_FILTERS, TRANSPORT_FILTERS};
+use std::net::IpAddr;
+
 use pnet::datalink::NetworkInterface;
 use pnet::packet::arp::{ArpOperations, ArpPacket};
 use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
@@ -15,7 +11,13 @@ use pnet::packet::ipv6::Ipv6Packet;
 use pnet::packet::tcp::TcpPacket;
 use pnet::packet::udp::UdpPacket;
 use pnet::packet::{icmp, icmpv6, Packet};
-use std::net::IpAddr;
+
+use crate::filter::Filter;
+use crate::utils::{
+    get_icmp_type_name, get_icmpv6_type_name, get_local_time, get_sender_and_target_vendor,
+    host_match,
+};
+use crate::{Vendor, IP_FILTERS, TRANSPORT_FILTERS};
 
 pub fn handle_ethernet_frame(
     interface: &NetworkInterface,

@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+
 use clap::ValueEnum;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
