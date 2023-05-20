@@ -1,7 +1,6 @@
-use crate::filter::{Filter, IP_FILTERS, TRANSPORT_FILTERS};
-use crate::handle::handle_ethernet_frame;
-use crate::utils::get_default_interface_name;
-use crate::vendor::Vendor;
+use std::net::IpAddr;
+use std::path::Path;
+
 use clap::Parser;
 use directories::ProjectDirs;
 use pnet::datalink;
@@ -9,8 +8,11 @@ use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::NetworkInterface;
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::util::MacAddr;
-use std::net::IpAddr;
-use std::path::Path;
+
+use crate::filter::{Filter, IP_FILTERS, TRANSPORT_FILTERS};
+use crate::handle::handle_ethernet_frame;
+use crate::utils::get_default_interface_name;
+use crate::vendor::Vendor;
 
 mod filter;
 mod handle;

@@ -1,10 +1,12 @@
-use crate::{MacAddr, Vendor};
+use std::net::IpAddr;
+
 use chrono::Local;
 use pnet::datalink::NetworkInterface;
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::packet::icmp::{IcmpType, IcmpTypes};
 use pnet::packet::icmpv6::{Icmpv6Type, Icmpv6Types};
-use std::net::IpAddr;
+
+use crate::{MacAddr, Vendor};
 
 pub fn get_default_interface_name(interfaces: &[NetworkInterface]) -> String {
     interfaces
