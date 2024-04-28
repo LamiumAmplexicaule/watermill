@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 use std::{fs, io};
 
 use async_recursion::async_recursion;
+use chrono::{Local, TimeZone};
 use csv::Reader;
 use serde::Deserialize;
 
@@ -23,12 +25,22 @@ pub struct Vendor {
 
 impl Vendor {
     #[async_recursion]
-    pub async fn new(path: &Path, update: bool) -> Vec<Vendor> {
+    pub async fn new(path: &Path, update_request: bool) -> Vec<Vendor> {
         let file = File::open(path);
 
         match file {
             Ok(file) => {
-                if update {
+                let metadata = file.metadata().unwrap();
+                let system_time = metadata.modified().unwrap();
+                let unix_time = system_time.duration_since(UNIX_EPOCH).unwrap();
+                let local_time = Local.timestamp_opt(unix_time.as_secs() as i64, 0).unwrap();
+                let now = Local::now();
+                let diff = now - local_time;
+                let mut needs_update = false;
+                if diff.num_weeks() >= 4 {
+                    needs_update = true;
+                }
+                if update_request || needs_update {
                     Self::get_oui(path).await;
                     Vendor::new(path, false).await;
                 }
