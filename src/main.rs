@@ -68,7 +68,7 @@ async fn main() {
 
     let oui_filename = Path::new("oui.csv");
     let project_dirs = ProjectDirs::from("net", "henbit", "watermill").unwrap();
-    let cache_dir = project_dirs.config_dir();
+    let cache_dir = project_dirs.cache_dir();
     let oui_path = cache_dir.join(oui_filename);
     let vendors = Vendor::new(oui_path.as_path(), cli.update).await;
 
