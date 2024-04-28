@@ -45,16 +45,10 @@ async fn main() {
 
     sudo::escalate_if_needed().expect("sudo failed");
 
-    let mut filters = match cli.filters {
-        Some(filters) => filters,
-        None => Vec::new(),
-    };
+    let mut filters = cli.filters.unwrap_or_else(Vec::new);
     filters.sort();
     filters.dedup();
-    let mut hosts = match cli.hosts {
-        Some(hosts) => hosts,
-        None => Vec::new(),
-    };
+    let mut hosts = cli.hosts.unwrap_or_else(Vec::new);
     hosts.sort();
     hosts.dedup();
 

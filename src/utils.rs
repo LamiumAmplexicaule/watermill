@@ -37,14 +37,8 @@ pub fn get_sender_and_target_vendor(
     let sender_vendor = search_vendor_name(ethernet.get_source(), vendors);
     let target_vendor = search_vendor_name(ethernet.get_destination(), vendors);
     (
-        match sender_vendor {
-            Some(sender_vendor) => sender_vendor,
-            None => "Unknown".to_string(),
-        },
-        match target_vendor {
-            Some(target_vendor) => target_vendor,
-            None => "Unknown".to_string(),
-        },
+        sender_vendor.unwrap_or_else(|| "Unknown".to_string()),
+        target_vendor.unwrap_or_else(|| "Unknown".to_string()),
     )
 }
 
