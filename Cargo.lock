@@ -1746,7 +1746,7 @@ checksum = "943aab3fdaaa029a6e0271b35ea10b72b943135afe9bffca82384098ad0e06a6"
 
 [[package]]
 name = "watermill"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "async-recursion",
  "chrono",
